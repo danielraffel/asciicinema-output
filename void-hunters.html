@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VOID HUNTERS</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
@@ -31,6 +31,9 @@
             overflow: hidden;
             background: var(--darker-bg);
             font-family: 'Share Tech Mono', monospace;
+            -webkit-overflow-scrolling: touch;
+            position: fixed;
+            touch-action: none;
         }
 
         #game-container {
@@ -452,63 +455,81 @@
         /* Mobile Controls */
         #mobile-controls {
             display: none;
-            position: absolute;
-            bottom: 20px;
+            position: fixed;
+            bottom: 30px;
+            bottom: calc(30px + env(safe-area-inset-bottom, 0px));
             left: 0;
             right: 0;
             justify-content: space-between;
             padding: 0 20px;
-            z-index: 60;
+            padding-left: calc(20px + env(safe-area-inset-left, 0px));
+            padding-right: calc(20px + env(safe-area-inset-right, 0px));
+            z-index: 200;
+            pointer-events: none;
         }
 
-        @media (max-width: 768px), (pointer: coarse) {
+        @media (max-width: 900px), (pointer: coarse), (hover: none) {
             #mobile-controls {
                 display: flex;
             }
         }
 
         .touch-btn {
-            width: 60px;
-            height: 60px;
-            border: 2px solid var(--neon-cyan);
-            background: rgba(0, 245, 255, 0.1);
+            width: 70px;
+            height: 70px;
+            border: 3px solid var(--neon-cyan);
+            background: rgba(0, 245, 255, 0.2);
             color: var(--neon-cyan);
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
             -webkit-user-select: none;
+            -webkit-touch-callout: none;
             touch-action: manipulation;
+            pointer-events: auto;
+            cursor: pointer;
         }
 
+        .touch-btn.active,
         .touch-btn:active {
             background: var(--neon-cyan);
             color: var(--dark-bg);
+            box-shadow: 0 0 20px var(--neon-cyan);
         }
 
         .move-controls {
             display: flex;
-            gap: 10px;
+            gap: 15px;
         }
 
         .action-controls {
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            align-items: flex-end;
         }
 
         #fire-btn {
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             border-color: var(--neon-red);
             color: var(--neon-red);
-            background: rgba(255, 0, 64, 0.1);
+            background: rgba(255, 0, 64, 0.2);
+            font-size: 2.5rem;
         }
 
+        #fire-btn.active,
         #fire-btn:active {
             background: var(--neon-red);
             color: var(--dark-bg);
+            box-shadow: 0 0 20px var(--neon-red);
+        }
+
+        #bomb-btn {
+            width: 60px;
+            height: 60px;
         }
     </style>
 </head>
@@ -1801,17 +1822,44 @@
         const bombBtn = document.getElementById('bomb-btn');
 
         function addTouchEvents(btn, key) {
+            // Touch events
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 keys[key] = true;
+                btn.classList.add('active');
                 initAudio();
-            });
+            }, { passive: false });
+            
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 keys[key] = false;
-            });
+                btn.classList.remove('active');
+            }, { passive: false });
+            
             btn.addEventListener('touchcancel', (e) => {
                 keys[key] = false;
+                btn.classList.remove('active');
+            });
+
+            // Also add mouse events for testing on desktop
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                keys[key] = true;
+                btn.classList.add('active');
+                initAudio();
+            });
+            
+            btn.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                keys[key] = false;
+                btn.classList.remove('active');
+            });
+            
+            btn.addEventListener('mouseleave', (e) => {
+                keys[key] = false;
+                btn.classList.remove('active');
             });
         }
 
@@ -1819,6 +1867,13 @@
         addTouchEvents(rightBtn, 'right');
         addTouchEvents(fireBtn, 'fire');
         addTouchEvents(bombBtn, 'bomb');
+
+        // Prevent default touch behavior on game container to avoid scrolling
+        document.getElementById('game-container').addEventListener('touchmove', (e) => {
+            if (state === GameState.PLAYING) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // ============================================
         // UI FUNCTIONS

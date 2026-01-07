@@ -49,6 +49,14 @@
                 var(--dark-bg);
         }
 
+        @media (max-width: 900px), (pointer: coarse), (hover: none) {
+            #game-container {
+                align-items: flex-start;
+                padding-top: 5px;
+                padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+            }
+        }
+
         #game-canvas {
             image-rendering: pixelated;
             image-rendering: crisp-edges;
@@ -207,6 +215,23 @@
             font-family: 'Orbitron', sans-serif;
             z-index: 40;
             pointer-events: none;
+        }
+
+        @media (max-width: 900px), (pointer: coarse), (hover: none) {
+            #hud {
+                position: fixed;
+                top: 0;
+                padding: 5px 10px;
+                font-size: 0.85rem;
+            }
+            
+            .hud-label {
+                font-size: 0.5rem;
+            }
+            
+            .hud-value {
+                font-size: 1rem;
+            }
         }
 
         #hud.hidden {
@@ -456,16 +481,18 @@
         #mobile-controls {
             display: none;
             position: fixed;
-            bottom: 30px;
-            bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+            bottom: 0;
             left: 0;
             right: 0;
             justify-content: space-between;
-            padding: 0 20px;
+            align-items: center;
+            padding: 15px 20px;
+            padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
             padding-left: calc(20px + env(safe-area-inset-left, 0px));
             padding-right: calc(20px + env(safe-area-inset-right, 0px));
             z-index: 200;
             pointer-events: none;
+            background: linear-gradient(to top, rgba(5, 5, 8, 0.95) 0%, rgba(5, 5, 8, 0.8) 70%, transparent 100%);
         }
 
         @media (max-width: 900px), (pointer: coarse), (hover: none) {
@@ -478,7 +505,7 @@
             width: 70px;
             height: 70px;
             border: 3px solid var(--neon-cyan);
-            background: rgba(0, 245, 255, 0.2);
+            background: rgba(0, 245, 255, 0.15);
             color: var(--neon-cyan);
             font-size: 1.8rem;
             border-radius: 50%;
@@ -508,15 +535,15 @@
         .action-controls {
             display: flex;
             gap: 15px;
-            align-items: flex-end;
+            align-items: center;
         }
 
         #fire-btn {
-            width: 90px;
-            height: 90px;
+            width: 85px;
+            height: 85px;
             border-color: var(--neon-red);
             color: var(--neon-red);
-            background: rgba(255, 0, 64, 0.2);
+            background: rgba(255, 0, 64, 0.15);
             font-size: 2.5rem;
         }
 
@@ -531,12 +558,51 @@
             width: 60px;
             height: 60px;
         }
+
+        /* Mobile Pause Button */
+        #mobile-pause-btn {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(0, 245, 255, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+            color: rgba(0, 245, 255, 0.7);
+            font-size: 1.2rem;
+            border-radius: 8px;
+            z-index: 210;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        #mobile-pause-btn:active {
+            background: rgba(0, 245, 255, 0.3);
+        }
+
+        #mobile-pause-btn.hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 900px), (pointer: coarse), (hover: none) {
+            #mobile-pause-btn:not(.hidden) {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         <div id="crt-overlay"></div>
+        
+        <!-- Mobile Pause Button -->
+        <button id="mobile-pause-btn" class="hidden">⏸</button>
 
         <!-- HUD -->
         <div id="hud" class="hidden">
@@ -648,10 +714,16 @@
         // Scale canvas for display
         function resizeCanvas() {
             const container = document.getElementById('game-container');
+            const isMobile = window.matchMedia('(max-width: 900px), (pointer: coarse), (hover: none)').matches;
+            const controlsHeight = isMobile ? 120 : 0; // Space for touch controls
+            
+            const availableWidth = container.clientWidth;
+            const availableHeight = container.clientHeight - controlsHeight;
+            
             const scale = Math.min(
-                container.clientWidth / GAME_WIDTH,
-                container.clientHeight / GAME_HEIGHT
-            ) * 0.9;
+                availableWidth / GAME_WIDTH,
+                availableHeight / GAME_HEIGHT
+            ) * 0.95;
             canvas.style.width = (GAME_WIDTH * scale) + 'px';
             canvas.style.height = (GAME_HEIGHT * scale) + 'px';
         }
@@ -821,7 +893,7 @@
             { name: 'DUAL', color: COLORS.green, damage: 1, fireRate: 180, spread: 2 },
             { name: 'SPREAD', color: COLORS.yellow, damage: 1, fireRate: 160, spread: 3 },
             { name: 'PLASMA', color: COLORS.orange, damage: 2, fireRate: 140, spread: 3 },
-            { name: 'LASER', color: COLORS.magenta, damage: 3, fireRate: 120, spread: 5 }
+            { name: 'LASER', color: COLORS.magenta, damage: 2, fireRate: 160, spread: 5 }
         ];
 
         // Power-up definitions
@@ -1868,6 +1940,27 @@
         addTouchEvents(fireBtn, 'fire');
         addTouchEvents(bombBtn, 'bomb');
 
+        // Mobile pause button
+        const mobilePauseBtn = document.getElementById('mobile-pause-btn');
+        mobilePauseBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (state === GameState.PLAYING) {
+                pauseGame();
+            } else if (state === GameState.PAUSED) {
+                resumeGame();
+            }
+        }, { passive: false });
+        
+        mobilePauseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (state === GameState.PLAYING) {
+                pauseGame();
+            } else if (state === GameState.PAUSED) {
+                resumeGame();
+            }
+        });
+
         // Prevent default touch behavior on game container to avoid scrolling
         document.getElementById('game-container').addEventListener('touchmove', (e) => {
             if (state === GameState.PLAYING) {
@@ -2020,25 +2113,30 @@
             bombs--;
 
             playSound('bomb');
-            screenShake = 25;
+            screenShake = 15;
 
-            // Clear all enemy bullets
+            // Clear enemy bullets near player (within radius)
+            const clearRadius = 200;
             enemyBullets.forEach(b => {
-                particles.push(new Particle(b.x, b.y, 0, 0, b.color, 20));
+                const dx = b.x - player.x;
+                const dy = b.y - player.y;
+                if (Math.sqrt(dx * dx + dy * dy) < clearRadius) {
+                    particles.push(new Particle(b.x, b.y, 0, 0, b.color, 20));
+                    b.active = false;
+                }
             });
-            enemyBullets = [];
 
-            // Damage all enemies
+            // Damage all enemies (reduced)
             enemies.forEach(e => {
-                e.hit(5);
+                e.hit(2);
             });
 
             if (boss) {
-                boss.hit(10);
+                boss.hit(5);
             }
 
-            // Visual flash
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            // Visual flash (subtler)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
             updatePowerupIndicator();
@@ -2153,6 +2251,7 @@
             state = GameState.PLAYING;
             showScreen(null);
             document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('mobile-pause-btn').classList.remove('hidden');
             spawnWave(1);
         }
 
@@ -2169,6 +2268,7 @@
         function gameOver() {
             state = GameState.GAMEOVER;
             document.getElementById('hud').classList.add('hidden');
+            document.getElementById('mobile-pause-btn').classList.add('hidden');
 
             document.getElementById('final-score').textContent = score.toLocaleString();
             document.getElementById('final-wave').textContent = wave;
@@ -2455,6 +2555,7 @@
 
             document.getElementById('quit-btn').addEventListener('click', () => {
                 showScreen('title-screen');
+                document.getElementById('mobile-pause-btn').classList.add('hidden');
                 state = GameState.TITLE;
             });
 
@@ -2464,6 +2565,7 @@
 
             document.getElementById('title-btn').addEventListener('click', () => {
                 showScreen('title-screen');
+                document.getElementById('mobile-pause-btn').classList.add('hidden');
                 state = GameState.TITLE;
             });
 

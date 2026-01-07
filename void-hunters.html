@@ -1749,6 +1749,7 @@
         let formationOffset = { x: 0, y: 0 };
         let formationDir = 1;
         let formationTimer = 0;
+        let waveSpawning = false;
 
         // ============================================
         // INPUT HANDLING
@@ -1995,6 +1996,7 @@
                 announceWave(waveNum, true);
                 setTimeout(() => {
                     boss = new Boss(waveNum);
+                    waveSpawning = false;
                     playSound('boss');
                 }, 2000);
             } else {
@@ -2006,6 +2008,9 @@
 
                 const startX = (GAME_WIDTH - cols * 60) / 2 + 30;
                 const startY = 80;
+
+                const totalEnemies = rows * cols;
+                let spawnedCount = 0;
 
                 for (let row = 0; row < rows; row++) {
                     for (let col = 0; col < cols; col++) {
@@ -2026,6 +2031,10 @@
                             if (state === GameState.PLAYING) {
                                 enemies.push(new Enemy(x, y, type));
                             }
+                            spawnedCount++;
+                            if (spawnedCount >= totalEnemies) {
+                                waveSpawning = false;
+                            }
                         }, (row * cols + col) * 50);
                     }
                 }
@@ -2033,7 +2042,10 @@
         }
 
         function checkWaveComplete() {
+            if (waveSpawning) return;
+            
             if (enemies.length === 0 && !boss) {
+                waveSpawning = true;
                 wave++;
                 updateWaveDisplay();
 
@@ -2057,6 +2069,7 @@
             weaponEnergy = 0;
             bombs = 3;
             activePowerups = {};
+            waveSpawning = false;
 
             bullets = [];
             enemyBullets = [];
